@@ -26,24 +26,37 @@ for i in $(seq 1 $frames_num);do
     new_width=$((width+offset_x))
     height=$(webpmux -info $webpfile|awk -v cur_line="$((table_line+i))" '{if(NR==cur_line) print $3}')
     offset_y=$(webpmux -info $webpfile|awk -v cur_line="$((table_line+i))" '{if(NR==cur_line) print $6}')
+    blend=$(webpmux -info $webpfile|awk -v cur_line="$((table_line+i))" '{if(NR==cur_line) print $9}')
     new_height=$((height+offset_y))
-    dwebp "$i.webp" -o "$i.png"
-    convert -gravity southeast -extent ${new_width}x${new_height} -background none "$i.png" "$i.png"
+    dwebp "$i.webp" -o "x$i.png"
+    convert -gravity southeast -extent ${new_width}x${new_height} -background none "x$i.png" "b$i.png"
+    if [[ $blend = no ]];then
+        cp "b$i.png" "f$i.png"
+    else
+        composite -gravity northwest -compose atop "b$i.png" "f$((i-1)).png" "f$i.png"
+    fi
 done
-for i in {1..9}
+for i in {1..99}
 do
-   if [[ -f "$i.png" ]];then
-       mv "$i.png" "00$i.png"
-   fi
-done
-for i in {10..99}
-do
-   if [[ -f "$i.png" ]];then
-       mv "$i.png" "0$i.png"
-   fi
+    if [[ -f "x$i.png" ]];then
+        if [[ i -lt 10 ]];then
+            mv "b$i.png" "b00$i.png"
+            mv "f$i.png" "f00$i.png"
+        else
+            mv "b$i.png" "b0$i.png"
+            mv "f$i.png" "f0$i.png"
+        fi
+    fi
 done
 echo "converting all png frame file to gif..."
-convert -delay 0 -loop 0 *.png animation.gif
-mv $temp_dir/animation.gif $cur_dir/$2
-rm -rf $temp_dir
+convert -delay 0 -loop 0 b*.png animation.gif
+convert -delay 0 -loop 0 f*.png animation2.gif
+cp $temp_dir/animation.gif $cur_dir/$2
+#rm -rf $temp_dir
+echo $temp_dir
+rm *.webp
+rm x*.png
+rm b*.png
+ls *.png >doit.sh
+chmod +x doit.sh
 echo "finished with success!"
